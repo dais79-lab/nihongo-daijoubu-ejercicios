@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz de Japonés</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .match-btn {
+            transition: all 0.3s ease;
+        }
+        .match-btn.selected {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .match-btn.correct {
+            background-color: #10b981;
+            color: white;
+        }
+        .match-btn.incorrect {
+            background-color: #ef4444;
+            color: white;
+        }
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn.correct {
+            background-color: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        .option-btn.incorrect {
+            background-color: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8 px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-indigo-600 mb-2" id="title"></h1>
+            <p class="text-center text-gray-600 mb-8" id="instructions"></p>
+            
+            <div id="progress-container" class="mb-6">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span id="section-label">Sección 1 de 3</span>
+                    <span id="score-display">Puntos: 0</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div id="progress-bar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div id="quiz-container">
+                <div id="matching-section" class="quiz-section fade-in">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Emparejar palabras</h2>
+                    <p class="text-gray-600 mb-4 text-sm">Selecciona una palabra en japonés y luego su traducción en español</p>
+                    <div id="matching-pairs" class="grid grid-cols-2 gap-4 mb-6"></div>
+                    <div id="matching-answers" class="grid grid-cols-2 gap-4 mb-6"></div>
+                </div>
+
+                <div id="vocab-section" class="quiz-section hidden fade-in">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Vocabulario</h2>
+                    <div id="vocab-question" class="text-lg text-gray-700 mb-6 p-4 bg-gray-50 rounded-lg"></div>
+                    <div id="vocab-options" class="space-y-3"></div>
+                </div>
+
+                <div id="grammar-section" class="quiz-section hidden fade-in">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Gramática</h2>
+                    <div id="grammar-question" class="text-lg text-gray-700 mb-6 p-4 bg-gray-50 rounded-lg"></div>
+                    <div id="grammar-options" class="space-y-3"></div>
+                </div>
+
+                <div id="result-section" class="quiz-section hidden fade-in">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">¡Resultados!</h2>
+                        <p id="result-score" class="text-4xl font-bold text-indigo-600 mb-6"></p>
+                        <div id="result-details" class="text-left bg-gray-50 rounded-lg p-6 mb-6"></div>
+                        <button onclick="restartQuiz()" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+                            Volver a intentar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="button-container" class="mt-8">
+                <button id="check-btn" onclick="checkAnswer()" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+                    Comprobar
+                </button>
+                <button id="next-btn" onclick="nextQuestion()" class="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors hidden">
+                    Siguiente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizData = {
+            "ui_text": {
+                "title": "Unidad 4: Compras (かいもの)",
+                "instructions": "Por favor, responde las siguientes preguntas de vocabulario y gramática.",
+                "check_button": "Comprobar",
+                "next_button": "Siguiente",
+                "result_score": "Tu puntaje es:"
+            },
+            "matching": [
+                {"ja": "ネクタイ", "es": "corbata"},
+                {"ja": "シャツ", "es": "camisa"},
+                {"ja": "ズボン", "es": "pantalones"},
+                {"ja": "にく", "es": "carne"},
+                {"ja": "さかな", "es": "pescado"},
+                {"ja": "みず", "es": "agua"},
+                {"ja": "カメラ", "es": "cámara"},
+                {"ja": "パソコン", "es": "computadora portátil"},
+                {"ja": "じてんしゃ", "es": "bicicleta"},
+                {"ja": "テレビ", "es": "televisión"}
+            ],
+            "vocab_quiz": [
+                {
+                    "q": "¿Qué significa esta palabra en español? \n\n ひゃくえん",
+                    "options": ["10 yenes", "100 yenes", "1000 yenes"],
+                    "a": 1
+                },
+                {
+                    "q": "¿Qué significa esta palabra en español? \n\n スカート",
+                    "options": ["falda", "camisa", "pantalones"],
+                    "a": 0
+                },
+                {
+                    "q": "¿Qué significa esta palabra en español? \n\n ワイン",
+                    "options": ["agua", "vino", "carne"],
+                    "a": 1
+                },
+                {
+                    "q": "¿Qué significa esta palabra en español? \n\n にかい",
+                    "options": ["primer piso", "segundo piso", "tercer piso"],
+                    "a": 1
+                },
+                {
+                    "q": "¿Qué significa esta palabra en español? \n\n いちまんえん",
+                    "options": ["100 yenes", "1,000 yenes", "10,000 yenes"],
+                    "a": 2
+                }
+            ],
+            "grammar_quiz": [
+                {
+                    "q": "Elige la palabra correcta para completar la frase. \n\n カメラは どこ（　　）か。",
+                    "options": ["です", "ます", "ください"],
+                    "a": 0
+                },
+                {
+                    "q": "Elige la palabra correcta para completar la frase. \n\n これを（　　）。",
+                    "options": ["あります", "どこ", "ください"],
+                    "a": 2
+                },
+                {
+                    "q": "Elige la palabra correcta para completar la frase. \n\n ネクタイは（　　）ですか。",
+                    "options": ["いくら", "どこ", "なに"],
+                    "a": 0
+                },
+                {
+                    "q": "Elige la palabra correcta para completar la frase. \n\n じてんしゃは（　　）ですか。",
+                    "options": ["どこ", "いくら", "あります"],
+                    "a": 0
+                },
+                {
+                    "q": "Elige la palabra correcta para completar la frase. \n\n シャツは（　　）か。",
+                    "options": ["あります", "ありません", "ください"],
+                    "a": 0
+                }
+            ]
+        };
+
+        let currentSection = 'matching';
+        let currentIndex = 0;
+        let score = 0;
+        let selectedMatchPair = null;
+        let selectedMatchAnswer = null;
+        let matchedPairs = [];
+        let currentOptionIndex = null;
+        let results = {
+            matching: { correct: 0, total: quizData.matching.length },
+            vocab: { correct: 0, total: quizData.vocab_quiz.length },
+            grammar: { correct: 0, total: quizData.grammar_quiz.length }
+        };
+
+        document.getElementById('title').textContent = quizData.ui_text.title;
+        document.getElementById('instructions').textContent = quizData.ui_text.instructions;
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function initMatchingQuiz() {
+            const pairsContainer = document.getElementById('matching-pairs');
+            const answersContainer = document.getElementById('matching-answers');
+            const shuffledPairs = shuffleArray(quizData.matching);
+            const shuffledAnswers = shuffleArray(quizData.matching.map(item => item.es));
+
+            pairsContainer.innerHTML = '';
+            answersContainer.innerHTML = '';
+            matchedPairs = [];
+            selectedMatchPair = null;
+            selectedMatchAnswer = null;
+
+            shuffledPairs.forEach((item, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'match-btn bg-indigo-100 text-indigo-800 py-3 px-4 rounded-lg font-medium hover:bg-indigo-200 text-center';
+                btn.textContent = item.ja;
+                btn.dataset.index = index;
+                btn.dataset.type = 'pair';
+                btn.onclick = () => selectMatchItem(btn, 'pair', item);
+                pairsContainer.appendChild(btn);
+            });
+
+            shuffledAnswers.forEach((answer, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'match-btn bg-green-100 text-green-800 py-3 px-4 rounded-lg font-medium hover:bg-green-200 text-center';
+                btn.textContent = answer;
+                btn.dataset.index = index;
+                btn.dataset.type = 'answer';
+                btn.dataset.answer = answer;
+                btn.onclick = () => selectMatchItem(btn, 'answer', answer);
+                answersContainer.appendChild(btn);
+            });
+
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('check-btn').textContent = quizData.ui_text.check_button;
+        }
+
+        function selectMatchItem(btn, type, value) {
+            if (type === 'pair') {
+                if (selectedMatchPair) {
+                    selectedMatchPair.classList.remove('selected');
+                }
+                selectedMatchPair = btn;
+                selectedMatchPair.classList.add('selected');
+            } else {
+                if (selectedMatchAnswer) {
+                    selectedMatchAnswer.classList.remove('selected');
+                }
+                selectedMatchAnswer = btn;
+                selectedMatchAnswer.classList.add('selected');
+            }
+        }
+
+        function checkAnswer() {
+            if (currentSection === 'matching') {
+                if (selectedMatchPair && selectedMatchAnswer) {
+                    const ja = selectedMatchPair.textContent;
+                    const es = selectedMatchAnswer.dataset.answer;
+                    const correct = quizData.matching.find(item => item.ja === ja && item.es === es);
+
+                    if (correct) {
+                        selectedMatchPair.classList.add('correct');
+                        selectedMatchAnswer.classList.add('correct');
+                        selectedMatchPair.disabled = true;
+                        selectedMatchAnswer.disabled = true;
+                        matchedPairs.push({ ja, es });
+                        score++;
+                        results.matching.correct++;
+                    } else {
+                        selectedMatchPair.classList.add('incorrect');
+                        selectedMatchAnswer.classList.add('incorrect');
+                        setTimeout(() => {
+                            selectedMatchPair.classList.remove('incorrect');
+                            selectedMatchAnswer.classList.remove('incorrect');
+                        }, 1000);
+                    }
+
+                    selectedMatchPair.classList.remove('selected');
+                    selectedMatchAnswer.classList.remove('selected');
+                    selectedMatchPair = null;
+                    selectedMatchAnswer = null;
+
+                    updateProgress();
+                    document.getElementById('score-display').textContent = `Puntos: ${score}`;
+
+                    if (matchedPairs.length === quizData.matching.length) {
+                        document.getElementById('check-btn').classList.add('hidden');
+                        document.getElementById('next-btn').classList.remove('hidden');
+                        document.getElementById('next-btn').textContent = quizData.ui_text.next_button;
+                    }
+                }
+            } else {
+                if (currentOptionIndex !== null) {
+                    let quiz, resultKey;
+                    if (currentSection === 'vocab') {
+                        quiz = quizData.vocab_quiz[currentIndex];
+                        resultKey = 'vocab';
+                    } else {
+                        quiz = quizData.grammar_quiz[currentIndex];
+                        resultKey = 'grammar';
+                    }
+
+                    const buttons = document.querySelectorAll('.option-btn');
+                    buttons.forEach((btn, index) => {
+                        if (index === quiz.a) {
+                            btn.classList.add('correct');
+                        } else if (index === currentOptionIndex && index !== quiz.a) {
+                            btn.classList.add('incorrect');
+                        }
+                        btn.disabled = true;
+                    });
+
+                    if (currentOptionIndex === quiz.a) {
+                        score++;
+                        results[resultKey].correct++;
+                    }
+
+                    document.getElementById('score-display').textContent = `Puntos: ${score}`;
+                    document.getElementById('check-btn').classList.add('hidden');
+                    document.getElementById('next-btn').classList.remove('hidden');
+                    document.getElementById('next-btn').textContent = quizData.ui_text.next_button;
+                    updateProgress();
+                }
+            }
+        }
+
+        function nextQuestion() {
+            if (currentSection === 'matching') {
+                currentSection = 'vocab';
+                currentIndex = 0;
+                showSection('vocab-section');
+                showVocabQuestion();
+            } else if (currentSection === 'vocab') {
+                currentIndex++;
+                if (currentIndex < quizData.vocab_quiz.length) {
+                    showVocabQuestion();
+                } else {
+                    currentSection = 'grammar';
+                    currentIndex = 0;
+                    showSection('grammar-section');
+                    showGrammarQuestion();
+                }
+            } else if (currentSection === 'grammar') {
+                currentIndex++;
+                if (currentIndex < quizData.grammar_quiz.length) {
+                    showGrammarQuestion();
+                } else {
+                    showResults();
+                }
+            }
+
+            updateProgress();
+            currentOptionIndex = null;
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.quiz-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+
+        function showVocabQuestion() {
+            const quiz = quizData.vocab_quiz[currentIndex];
+            document.getElementById('vocab-question').innerHTML = quiz.q.replace(/\n/g, '<br>');
+            const optionsContainer = document.getElementById('vocab-options');
+            optionsContainer.innerHTML = '';
+
+            quiz.options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors';
+                btn.textContent = option;
+                btn.onclick = () => selectOption(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('check-btn').textContent = quizData.ui_text.check_button;
+        }
+
+        function showGrammarQuestion() {
+            const quiz = quizData.grammar_quiz[currentIndex];
+            document.getElementById('grammar-question').innerHTML = quiz.q.replace(/\n/g, '<br>');
+            const optionsContainer = document.getElementById('grammar-options');
+            optionsContainer.innerHTML = '';
+
+            quiz.options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors';
+                btn.textContent = option;
+                btn.onclick = () => selectOption(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('check-btn').classList.remove('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('check-btn').textContent = quizData.ui_text.check_button;
+        }
+
+        function selectOption(index, btn) {
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(b => b.classList.remove('bg-indigo-100', 'border-indigo-400'));
+            btn.classList.add('bg-indigo-100', 'border-indigo-400');
+            currentOptionIndex = index;
+        }
+
+        function updateProgress() {
+            let totalQuestions = quizData.matching.length + quizData.vocab_quiz.length + quizData.grammar_quiz.length;
+            let answeredQuestions = 0;
+
+            if (currentSection === 'matching') {
+                answeredQuestions = matchedPairs.length;
+            } else if (currentSection === 'vocab') {
+                answeredQuestions = quizData.matching.length + currentIndex;
+            } else {
+                answeredQuestions = quizData.matching.length + quizData.vocab_quiz.length + currentIndex;
+            }
+
+            let progress = (answeredQuestions / totalQuestions) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+
+            let sectionNum = 1;
+            if (currentSection === 'vocab') sectionNum = 2;
+            if (currentSection === 'grammar') sectionNum = 3;
+            document.getElementById('section-label').textContent = `Sección ${sectionNum} de 3`;
+        }
+
+        function showResults() {
+            showSection('result-section');
+            document.getElementById('button-container').classList.add('hidden');
+            document.getElementById('progress-container').classList.add('hidden');
+
+            const totalQuestions = quizData.matching.length + quizData.vocab_quiz.length + quizData.grammar_quiz.length;
+            document.getElementById('result-score').textContent = `${quizData.ui_text.result_score} ${score}/${totalQuestions}`;
+
+            const detailsContainer = document.getElementById('result-details');
+            detailsContainer.innerHTML = `
+                <h3 class="text-lg font-semibold mb-3">Desglose por sección:</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-white rounded-lg">
+                        <span class="font-medium">Emparejar palabras</span>
+                        <span class="${results.matching.correct === results.matching.total ? 'text-green-600' : 'text-red-600'} font-bold">${results.matching.correct}/${results.matching.total}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white rounded-lg">
+                        <span class="font-medium">Vocabulario</span>
+                        <span class="${results.vocab.correct === results.vocab.total ? 'text-green-600' : 'text-red-600'} font-bold">${results.vocab.correct}/${results.vocab.total}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white rounded-lg">
+                        <span class="font-medium">Gramática</span>
+                        <span class="${results.grammar.correct === results.grammar.total ? 'text-green-600' : 'text-red-600'} font-bold">${results.grammar.correct}/${results.grammar.total}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function restartQuiz() {
+            currentSection = 'matching';
+            currentIndex = 0;
+            score = 0;
+            matchedPairs = [];
+            selectedMatchPair = null;
+            selectedMatchAnswer = null;
+            currentOptionIndex = null;
+            results = {
+                matching: { correct: 0, total: quizData.matching.length },
+                vocab: { correct: 0, total: quizData.vocab_quiz.length },
+                grammar: { correct: 0, total: quizData.grammar_quiz.length }
+            };
+
+            document.getElementById('score-display').textContent = 'Puntos: 0';
+            document.getElementById('button-container').classList.remove('hidden');
+            document.getElementById('progress-container').classList.remove('hidden');
+            showSection('matching-section');
+            initMatchingQuiz();
+            updateProgress();
+        }
+
+        initMatchingQuiz();
+    </script>
+</body>
+</html>
